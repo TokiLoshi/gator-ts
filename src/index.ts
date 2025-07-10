@@ -8,6 +8,7 @@ import {
 	runCommand,
 	registerUser,
 	resetDB,
+	getAllUsers,
 } from "./commands.js";
 import { argv } from "node:process";
 
@@ -19,6 +20,7 @@ async function main() {
 	const login = await registerCommand(registery, "login", handlerLogin);
 	const register = await registerCommand(registery, "register", registerUser);
 	const reset = await registerCommand(registery, "reset", resetDB);
+	const getUsers = await registerCommand(registery, "users", getAllUsers);
 
 	// use process.argv to remove anything that's not needed
 	const commands = process.argv.slice(2);

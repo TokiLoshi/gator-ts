@@ -1,5 +1,11 @@
 import setUser from "../config.js";
-import { createUser, getUser, deleteUsers } from "./lib/db/queries/users.js";
+import {
+	createUser,
+	getUser,
+	deleteUsers,
+	getUsers,
+} from "./lib/db/queries/users.js";
+import { readConfig } from "../config.js";
 
 export type CommandHandler = (
 	cmdName: string,
@@ -69,4 +75,22 @@ export async function resetDB() {
 	const deletedUsers = await deleteUsers();
 	console.log("Database reset");
 	return deletedUsers;
+}
+
+export async function getAllUsers() {
+	const userList = await getUsers();
+	const configFile = readConfig();
+	const currentUser = configFile["currentUserName"];
+
+	if (userList.length === 0) {
+		console.log("Database is empty");
+	}
+	for (let i = 0; i < userList.length; i++) {
+		const username = userList[i].name;
+		if (username === currentUser) {
+			console.log(`${username} (current)`);
+		} else {
+			console.log(`${username}`);
+		}
+	}
 }
