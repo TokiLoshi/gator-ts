@@ -17,3 +17,8 @@ export async function getUser(name: string) {
 
 	return result;
 }
+
+export async function deleteUsers() {
+	console.log("Deleting users");
+	await db.delete(users);
+}

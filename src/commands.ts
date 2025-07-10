@@ -1,5 +1,5 @@
 import setUser from "../config.js";
-import { createUser, getUser } from "./lib/db/queries/users.js";
+import { createUser, getUser, deleteUsers } from "./lib/db/queries/users.js";
 
 export type CommandHandler = (
 	cmdName: string,
@@ -63,4 +63,10 @@ export async function registerUser(cmdName: string, ...args: string[]) {
 		console.log("user was created: ", username);
 		console.log("User Data: ", newUser);
 	}
+}
+
+export async function resetDB() {
+	const deletedUsers = await deleteUsers();
+	console.log("Database reset");
+	return deletedUsers;
 }
