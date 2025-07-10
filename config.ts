@@ -21,7 +21,6 @@ export function readConfig() {
 	const filePath = getConfigFilePath();
 	// read from the home directory
 	const readFile = fs.readFileSync(filePath, "utf8");
-	console.log("REad file: ", readFile);
 	const decodedData = JSON.parse(readFile);
 	// decode the json string
 	const validatedData = validateConfig(decodedData);
@@ -29,16 +28,13 @@ export function readConfig() {
 		dbUrl: validatedData["dbUrl"],
 		currentUserName: validatedData["currentUserName"],
 	};
-	console.log("Config: ", config);
 	return config;
 }
 
 function getConfigFilePath(): string {
 	const homeDir = os.homedir();
-	console.log("Home directory: ", homeDir);
 	const fileName = ".gatorconfig.json";
 	const filePath = path.join(homeDir, fileName);
-	console.log("Path: ", filePath);
 	return filePath;
 }
 

@@ -6,15 +6,18 @@ import {
 	handlerLogin,
 	registerCommand,
 	runCommand,
+	registerUser,
 } from "./commands.js";
 import { argv } from "node:process";
 
-function main() {
+async function main() {
 	console.log("Hello, Gator!");
 	// Create a new commandsRegistery Object
 	const registery: CommandsRegistry = {};
 	// register a handler function for login
-	const login = registerCommand(registery, "login", handlerLogin);
+	const login = await registerCommand(registery, "login", handlerLogin);
+	const register = await registerCommand(registery, "register", registerUser);
+
 	// use process.argv to remove anything that's not needed
 	const commands = process.argv.slice(2);
 	// after splicing the arguments check for at least one argument
@@ -27,14 +30,13 @@ function main() {
 	const commandName = commands[0];
 	const argumentsArray = commands.slice(1);
 
-	const results = runCommand(registery, commandName, ...argumentsArray);
+	const results = await runCommand(registery, commandName, ...argumentsArray);
+
 	console.log(
 		`Ran ${commandName} with args ${argumentsArray} and returned: ${results}`
 	);
 
-	// npm run start whould exit with code 1 and print an error (not enough arguments)
-	// npm run start login (exit with code 1) print an error (username is required)
-	// npm run start login alice (set the current user in the config to alice) - not overwrite db string
+	process.exit(0);
 }
 
 main();

@@ -1,10 +1,14 @@
 import setUser from "../config.js";
+import { createUser, getUser } from "./lib/db/queries/users.js";
 
-export type CommandHandler = (cmdName: string, ...args: string[]) => void;
+export type CommandHandler = (
+	cmdName: string,
+	...args: string[]
+) => Promise<void>;
 
 export type CommandsRegistry = Record<string, CommandHandler>;
 
-export function handlerLogin(cmdName: string, ...args: string[]) {
+export async function handlerLogin(cmdName: string, ...args: string[]) {
 	// if args is empty throw an error
 	if (args.length === 0) {
 		throw new Error("username cannot be empty");
@@ -12,11 +16,15 @@ export function handlerLogin(cmdName: string, ...args: string[]) {
 	// handlerLogin takes username as single arg
 	const userName = args[0];
 	// use setUser function to set user to given username
+	const existingUser = await getUser(userName);
+	if (existingUser.length === 0) {
+		throw new Error("cannot login, user doesn't exist");
+	}
 	setUser(userName);
 	console.log(`username has been set to: ${userName}`);
 }
 
-export function registerCommand(
+export async function registerCommand(
 	registry: CommandsRegistry,
 	cmdName: string,
 	handler: CommandHandler
@@ -25,7 +33,7 @@ export function registerCommand(
 	registry[cmdName] = handler;
 }
 
-export function runCommand(
+export async function runCommand(
 	registery: CommandsRegistry,
 	cmdName: string,
 	...args: string[]
@@ -35,5 +43,24 @@ export function runCommand(
 		throw new Error("Command doesn't exist");
 		return;
 	}
-	registery[cmdName](cmdName, ...args);
+	await registery[cmdName](cmdName, ...args);
+}
+
+export async function registerUser(cmdName: string, ...args: string[]) {
+	const username = args[0];
+	// check name in args
+	if (username.length === 0) {
+		throw new Error("name required to register a new user");
+	}
+
+	const user = await getUser(username);
+
+	if (user.length !== 0) {
+		throw new Error("user already exists");
+	} else {
+		const newUser = await createUser(username);
+		setUser(username);
+		console.log("user was created: ", username);
+		console.log("User Data: ", newUser);
+	}
 }
