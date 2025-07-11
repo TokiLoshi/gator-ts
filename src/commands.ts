@@ -6,6 +6,7 @@ import {
 	getUsers,
 } from "./lib/db/queries/users.js";
 import { readConfig } from "../config.js";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
 
 export type CommandHandler = (
 	cmdName: string,
@@ -93,4 +94,127 @@ export async function getAllUsers() {
 			console.log(`${username}`);
 		}
 	}
+}
+
+type RSSFeed = {
+	channel: {
+		title: string;
+		link: string;
+		description: string;
+		item: RSSItem[];
+	};
+};
+
+type RSSItem = {
+	title: string;
+	link: string;
+	description: string;
+	pubDate: string;
+};
+
+export async function fetchFeed(feedURL: string) {
+	// fetch feed data
+	const data = await fetch(feedURL, {
+		method: "GET",
+		// set User-Agent header to gator (identify program to server)
+		headers: {
+			"User-Agent": "gator",
+		},
+	});
+
+	console.log("Data from fetch: ", data);
+	const text = await data.text();
+
+	// resolve response using text
+	console.log("Resolved text: ", text);
+
+	// Parse the XMP
+	// use XML Parser constructor from fast-xml parser and create new parser object
+	const parser = new XMLParser();
+	const parsedData = parser.parse(text);
+	// use parse() method on parser object to convert XML into js
+	console.log("Parsed Text: ", parsedData);
+
+	// Extract channel field
+	const channel = parsedData.rss.channel;
+	if (channel.length === 0) {
+		console.log("Channel doesn't exist");
+		return;
+	} else {
+		console.log("Channel exists: ", channel);
+	}
+	// verify channel exists handle errors if it doesn't
+	if (!channel.title) {
+		console.log("Channel doesn't have a title");
+		return;
+	}
+	if (!channel.link) {
+		console.log("Channel doesn't have a link");
+		return;
+	}
+	if (!channel.description) {
+		console.log("Channel doesn't have a description");
+	}
+
+	// Extract the metadata
+	// ensure there is a title, link, and description from the channel field
+	const { title, link, description } = channel;
+
+	// Extract feed items
+	// if channel field has item field it should be array
+	let item = channel.item;
+	const isArray = Array.isArray(item);
+	if (!item || !isArray) {
+		item = [];
+	}
+	let dataItems = [];
+
+	// use Array.isArray function if its not set field to empty array
+	// for each item extract title, link, description and pubdate
+	for (let i = 0; i < item.length; i++) {
+		const title = item[i].title;
+		const description = item[i].description;
+		const link = item[i].link;
+		const pubDate = item[i].pubDate;
+		// skip any item that has missing or invalid fields
+		if (!title || !description || !link || !pubDate) {
+			continue;
+		}
+		if (
+			typeof title !== "string" ||
+			typeof description !== "string" ||
+			typeof link !== "string" ||
+			typeof pubDate !== "string"
+		) {
+			continue;
+		}
+
+		let newItem: RSSItem = {
+			title,
+			link,
+			description,
+			pubDate,
+		};
+
+		dataItems.push(newItem);
+	}
+
+	// create an object with the channel metadata and list of items
+
+	const newsFeed: RSSFeed = {
+		channel: {
+			title,
+			link,
+			description,
+			item: dataItems,
+		},
+	};
+
+	return newsFeed;
+}
+
+export async function agg() {
+	const feedName = "https://www.wagslane.dev/index.xml";
+	const feed = await fetchFeed(feedName);
+	console.log(feed);
 }
