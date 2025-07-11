@@ -5,8 +5,10 @@ import {
 	deleteUsers,
 	getUsers,
 } from "./lib/db/queries/users.js";
+import { createFeed, getFeed, getFeeds } from "./lib/db/queries/feeds.js";
 import { readConfig } from "../config.js";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { users, feeds } from "./lib/db/schema.js";
 
 export type CommandHandler = (
 	cmdName: string,
@@ -217,4 +219,35 @@ export async function agg() {
 	const feedName = "https://www.wagslane.dev/index.xml";
 	const feed = await fetchFeed(feedName);
 	console.log(feed);
+}
+
+export async function addfeed(name: string, url: string) {
+	console.log("Name: ", name);
+	console.log("Url", url);
+	if (!name) {
+		console.error("Name is required");
+		process.exit(1);
+	}
+	if (!url) {
+		console.error("Url is required");
+		process.exit(1);
+	}
+	const configFile = readConfig();
+	const currentUser = configFile["currentUserName"];
+	const users = await getUser(currentUser);
+	const user = users[0];
+	if (!user) {
+		throw new Error("no valid id");
+	}
+	const userId = user.id;
+	const addedFeed = await createFeed(name, url, userId);
+	printFeed(addedFeed, user);
+}
+
+export type Feed = typeof feeds.$inferSelect;
+export type User = typeof users.$inferSelect;
+
+function printFeed(feed: Feed, user: User) {
+	console.log(`Feed: ${feed.name} (${feed.url}) [ID: ${feed.id}]`);
+	console.log(`User: ${user.name} [User ID: ${user.id}]`);
 }

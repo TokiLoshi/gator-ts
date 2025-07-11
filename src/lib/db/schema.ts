@@ -10,6 +10,13 @@ export const users = pgTable("users", {
 	name: text("name").notNull().unique(),
 });
 
-// protocol://username:password@host:port/database?sslmode=disable
-const connectionString =
-	"postgres://biancasilva@localhost:5432/gator?sslmode=disable";
+export const feeds = pgTable("feeds", {
+	id: uuid("id").primaryKey().defaultRandom().notNull(),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	name: text("name").notNull(),
+	url: text("url").notNull().unique(),
+	userId: uuid("user_id")
+		.references(() => users.id, { onDelete: "cascade" })
+		.notNull(),
+});

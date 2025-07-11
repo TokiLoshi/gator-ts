@@ -10,6 +10,7 @@ import {
 	resetDB,
 	getAllUsers,
 	agg,
+	addfeed,
 } from "./commands.js";
 import { argv } from "node:process";
 
@@ -23,6 +24,7 @@ async function main() {
 	const reset = await registerCommand(registery, "reset", resetDB);
 	const getUsers = await registerCommand(registery, "users", getAllUsers);
 	const aggregate = await registerCommand(registery, "agg", agg);
+	const createFeed = await registerCommand(registery, "addfeed", addfeed);
 
 	// use process.argv to remove anything that's not needed
 	const commands = process.argv.slice(2);
@@ -35,6 +37,14 @@ async function main() {
 	// Spit the command line arguments into command name and arguments array
 	const commandName = commands[0];
 	const argumentsArray = commands.slice(1);
+
+	if (commandName === "addfeed") {
+		const [name, url] = argumentsArray;
+		if (!name || !url) {
+			console.error("Name and url are required to add a feed");
+			process.exit(1);
+		}
+	}
 
 	const results = await runCommand(registery, commandName, ...argumentsArray);
 
