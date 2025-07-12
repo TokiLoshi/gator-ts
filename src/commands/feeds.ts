@@ -1,0 +1,171 @@
+import { XMLParser } from "fast-xml-parser";
+import { readConfig } from "../../config";
+import { getUser, getUserById } from "../lib/db/queries/users";
+import { createFeed, getFeeds } from "../lib/db/queries/feeds";
+import { feeds, users } from "../lib/db/schema";
+
+type RSSFeed = {
+	channel: {
+		title: string;
+		link: string;
+		description: string;
+		item: RSSItem[];
+	};
+};
+
+type RSSItem = {
+	title: string;
+	link: string;
+	description: string;
+	pubDate: string;
+};
+
+export async function fetchFeed(feedURL: string) {
+	// fetch feed data
+	const data = await fetch(feedURL, {
+		method: "GET",
+		// set User-Agent header to gator (identify program to server)
+		headers: {
+			"User-Agent": "gator",
+		},
+	});
+
+	console.log("Data from fetch: ", data);
+	const text = await data.text();
+
+	// resolve response using text
+	console.log("Resolved text: ", text);
+
+	// Parse the XMP
+	// use XML Parser constructor from fast-xml parser and create new parser object
+	const parser = new XMLParser();
+	const parsedData = parser.parse(text);
+	// use parse() method on parser object to convert XML into js
+	console.log("Parsed Text: ", parsedData);
+
+	// Extract channel field
+	const channel = parsedData.rss.channel;
+	if (channel.length === 0) {
+		console.log("Channel doesn't exist");
+		return;
+	} else {
+		console.log("Channel exists: ", channel);
+	}
+	// verify channel exists handle errors if it doesn't
+	if (!channel.title) {
+		console.log("Channel doesn't have a title");
+		return;
+	}
+	if (!channel.link) {
+		console.log("Channel doesn't have a link");
+		return;
+	}
+	if (!channel.description) {
+		console.log("Channel doesn't have a description");
+	}
+
+	// Extract the metadata
+	// ensure there is a title, link, and description from the channel field
+	const { title, link, description } = channel;
+
+	// Extract feed items
+	// if channel field has item field it should be array
+	let item = channel.item;
+	const isArray = Array.isArray(item);
+	if (!item || !isArray) {
+		item = [];
+	}
+	let dataItems = [];
+
+	// use Array.isArray function if its not set field to empty array
+	// for each item extract title, link, description and pubdate
+	for (let i = 0; i < item.length; i++) {
+		const title = item[i].title;
+		const description = item[i].description;
+		const link = item[i].link;
+		const pubDate = item[i].pubDate;
+		// skip any item that has missing or invalid fields
+		if (!title || !description || !link || !pubDate) {
+			continue;
+		}
+		if (
+			typeof title !== "string" ||
+			typeof description !== "string" ||
+			typeof link !== "string" ||
+			typeof pubDate !== "string"
+		) {
+			continue;
+		}
+
+		let newItem: RSSItem = {
+			title,
+			link,
+			description,
+			pubDate,
+		};
+
+		dataItems.push(newItem);
+	}
+
+	// create an object with the channel metadata and list of items
+
+	const newsFeed: RSSFeed = {
+		channel: {
+			title,
+			link,
+			description,
+			item: dataItems,
+		},
+	};
+
+	return newsFeed;
+}
+
+export async function agg() {
+	const feedName = "https://www.wagslane.dev/index.xml";
+	const feed = await fetchFeed(feedName);
+	console.log(feed);
+}
+
+export async function addfeed(cmdName: string, ...args: string[]) {
+	if (args.length !== 2) {
+		throw new Error(`usage: ${cmdName} <feed_name> <url>`);
+	}
+	const feedName = args[0];
+	const url = args[1];
+	console.log("Name: ", feedName);
+	console.log("Url", url);
+
+	const configFile = readConfig();
+	const currentUser = configFile["currentUserName"];
+	const users = await getUser(currentUser);
+	const user = users[0];
+	if (!user) {
+		throw new Error("no valid id");
+	}
+	const userId = user.id;
+	const addedFeed = await createFeed(feedName, url, userId);
+	printFeed(addedFeed, user);
+}
+
+export type Feed = typeof feeds.$inferSelect;
+export type User = typeof users.$inferSelect;
+
+function printFeed(feed: Feed, user: User) {
+	console.log(`Feed: ${feed.name} (${feed.url}) [ID: ${feed.id}]`);
+	console.log(`User: ${user.name} [User ID: ${user.id}]`);
+}
+
+export async function allFeeds() {
+	const allFeeds = await getFeeds();
+	for (let i = 0; i < allFeeds.length; i++) {
+		const feedName = allFeeds[i].name;
+		const feedUrl = allFeeds[i].url;
+		const userId = allFeeds[i].userId;
+		const user = await getUserById(userId);
+		const userName = user[0].name;
+		console.log(feedName);
+		console.log(feedUrl);
+		console.log(userName);
+	}
+}
