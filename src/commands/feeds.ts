@@ -8,6 +8,7 @@ import {
 	createFeedFollow,
 	getFeedFollowsForUser,
 	getFeed,
+	deleteFeedFollow,
 } from "../lib/db/queries/feeds";
 import { feeds, users } from "../lib/db/schema";
 import { getCurrentUser } from "./users";
@@ -205,4 +206,19 @@ export async function following() {
 	for (let i = 0; i < feeds.length; i++) {
 		console.log(feeds[i].name);
 	}
+}
+
+export async function unfollow(
+	cmndName: string,
+	user: User,
+	...args: string[]
+) {
+	const feedUrl = args[0];
+	if (feedUrl.length === 0) {
+		throw new Error(`usage: ${cmndName}: <feedURL>`);
+	}
+	const unfollowed = await deleteFeedFollow(feedUrl, user.id);
+	console.log("Unfollowed: ", unfollowed);
+	// unfollows the current user
+	// use middleware
 }

@@ -1,7 +1,7 @@
 import { UUID } from "crypto";
 import { db } from "..";
 import { feeds, feed_follows, users } from "../schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export async function createFeed(name: string, url: string, userId: string) {
 	const [result] = await db
@@ -67,4 +67,20 @@ export async function getFeedFollowsForUser(id: string) {
 		.innerJoin(feeds, eq(feed_follows.feedId, feeds.id))
 		.where(eq(feed_follows.userId, id));
 	return userFeeds;
+}
+
+export async function deleteFeedFollow(feedUrl: string, userId: string) {
+	const feed = await getFeedByUrl(feedUrl);
+	if (!feed) {
+		throw new Error("feed doesn't exist");
+	}
+	const feedId = feed.id;
+
+	const deletedFeedFollow = await db
+		.delete(feed_follows)
+		.where(
+			and(eq(feed_follows.feedId, feedId), eq(feed_follows.userId, userId))
+		)
+		.returning();
+	return deletedFeedFollow;
 }
