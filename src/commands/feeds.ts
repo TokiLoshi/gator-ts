@@ -28,6 +28,9 @@ type RSSItem = {
 	pubDate: string;
 };
 
+export type Feed = typeof feeds.$inferSelect;
+export type User = typeof users.$inferSelect;
+
 export async function fetchFeed(feedURL: string) {
 	// fetch feed data
 	const data = await fetch(feedURL, {
@@ -135,7 +138,7 @@ export async function agg() {
 	console.log(feed);
 }
 
-export async function addfeed(cmdName: string, ...args: string[]) {
+export async function addfeed(cmdName: string, user: User, ...args: string[]) {
 	if (args.length !== 2) {
 		throw new Error(`usage: ${cmdName} <feed_name> <url>`);
 	}
@@ -144,13 +147,13 @@ export async function addfeed(cmdName: string, ...args: string[]) {
 	console.log("Name: ", feedName);
 	console.log("Url", url);
 
-	const configFile = readConfig();
-	const currentUser = configFile["currentUserName"];
-	const users = await getUser(currentUser);
-	const user = users[0];
-	if (!user) {
-		throw new Error("no valid id");
-	}
+	// const configFile = readConfig();
+	// const currentUser = configFile["currentUserName"];
+	// const users = await getUser(currentUser);
+	// const user = users[0];
+	// if (!user) {
+	// 	throw new Error("no valid id");
+	// }
 	const userId = user.id;
 	const addedFeed = await createFeed(feedName, url, userId);
 	printFeed(addedFeed, user);
@@ -159,9 +162,6 @@ export async function addfeed(cmdName: string, ...args: string[]) {
 	const feedId = feedInfo[0].id;
 	const newFeedFollow = await createFeedFollow(userId, feedId);
 }
-
-export type Feed = typeof feeds.$inferSelect;
-export type User = typeof users.$inferSelect;
 
 function printFeed(feed: Feed, user: User) {
 	console.log(`Feed: ${feed.name} (${feed.url}) [ID: ${feed.id}]`);
@@ -182,19 +182,19 @@ export async function allFeeds() {
 	}
 }
 
-export async function follow(cmndName: string, ...args: string[]) {
+export async function follow(cmndName: string, user: User, ...args: string[]) {
 	if (args.length !== 1) {
 		throw new Error(`usage ${cmndName} <feedURL>`);
 	}
 	const feedUrl = args[0];
 	// get current user
-	const currentUser = await getCurrentUser();
-	const userId = currentUser[0].id;
+	// const currentUser = await getCurrentUser();
+	const userId = user.id;
 	const feed = await getFeedByUrl(feedUrl);
 	const feedId = feed.id;
 	// create a new follow record for current user
 	const newFeedFollow = await createFeedFollow(userId, feedId);
-	console.log(currentUser);
+	console.log(user.name);
 	console.log(feed.name);
 }
 

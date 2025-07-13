@@ -10,6 +10,7 @@ import { argv } from "node:process";
 import { registerUser, getAllUsers, handlerLogin } from "./commands/users.js";
 import { resetDB } from "./commands/reset.js";
 import { agg, addfeed, allFeeds, follow, following } from "./commands/feeds.js";
+import { middlewareLoggedIn } from "./middleware.js";
 
 async function main() {
 	console.log("Hello, Gator!");
@@ -21,10 +22,10 @@ async function main() {
 	await registerCommand(registery, "reset", resetDB);
 	await registerCommand(registery, "users", getAllUsers);
 	await registerCommand(registery, "agg", agg);
-	await registerCommand(registery, "addfeed", addfeed);
+	await registerCommand(registery, "addfeed", middlewareLoggedIn(addfeed));
 	await registerCommand(registery, "feeds", allFeeds);
-	await registerCommand(registery, "follow", follow);
-	await registerCommand(registery, "following", following);
+	await registerCommand(registery, "follow", middlewareLoggedIn(follow));
+	await registerCommand(registery, "following", middlewareLoggedIn(following));
 
 	// Handle arguments
 	const commands = process.argv.slice(2);

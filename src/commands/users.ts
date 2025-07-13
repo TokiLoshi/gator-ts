@@ -1,5 +1,6 @@
 import setUser, { readConfig } from "../../config";
 import { createUser, getUser, getUsers } from "../lib/db/queries/users";
+import { User } from "./feeds";
 
 export async function registerUser(cmdName: string, ...args: string[]) {
 	if (args.length !== 1) {
