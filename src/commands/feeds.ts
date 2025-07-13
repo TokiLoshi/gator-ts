@@ -9,6 +9,8 @@ import {
 	getFeedFollowsForUser,
 	getFeed,
 	deleteFeedFollow,
+	getNextFeedToFetch,
+	markFeedFetched,
 } from "../lib/db/queries/feeds";
 import { feeds, users } from "../lib/db/schema";
 import { getCurrentUser } from "./users";
@@ -133,10 +135,46 @@ export async function fetchFeed(feedURL: string) {
 	return newsFeed;
 }
 
-export async function agg() {
-	const feedName = "https://www.wagslane.dev/index.xml";
-	const feed = await fetchFeed(feedName);
-	console.log(feed);
+function parseDuration(durationStr: string): number {
+	const regex = /^(\d+)(ms|s|m|h)$/;
+	const match = durationStr.match(regex);
+	if (match) {
+		const duration = parseInt(match[1]);
+		const multiplier = match[2];
+
+		switch (multiplier) {
+			case "ms":
+				return duration;
+			case "s":
+				return duration * 1000;
+			case "m":
+				return duration * 1000 * 60;
+			case "h":
+				return duration * 1000 * 60 * 60;
+			default:
+				return 16000;
+		}
+	}
+	return 16000;
+}
+
+export async function agg(time_between_reqs: string) {
+	const duration = parseDuration(time_between_reqs);
+	console.log(`Collecting feeds every ${time_between_reqs}`);
+
+	scrapeFeeds().catch((error) => console.log(`Error: ${error}`));
+
+	const interval = setInterval(() => {
+		scrapeFeeds().catch((error) => console.log(`Error: ${error}`));
+	}, duration);
+
+	await new Promise<void>((resolve) => {
+		process.on("SIGNINT", () => {
+			console.log("Shutting down the feed aggregator...");
+			clearInterval(interval);
+			resolve();
+		});
+	});
 }
 
 export async function addfeed(cmdName: string, user: User, ...args: string[]) {
@@ -219,6 +257,29 @@ export async function unfollow(
 	}
 	const unfollowed = await deleteFeedFollow(feedUrl, user.id);
 	console.log("Unfollowed: ", unfollowed);
-	// unfollows the current user
-	// use middleware
+}
+
+export async function scrapeFeeds() {
+	// get the next feed to fetch from the db
+	const nextFeed = await getNextFeedToFetch();
+
+	if (nextFeed) {
+		// mark it as fetched
+		const feedId = nextFeed?.id;
+		const markedFetch = await markFeedFetched(feedId);
+		// fetch the feed using the url
+		const feedURL = nextFeed.url;
+		const feed = await fetchFeed(feedURL);
+		if (!feed) {
+			console.log("No feed to fetch");
+		} else if (feed) {
+			const feedItem = feed.channel.item;
+			for (let i = 0; i < feedItem.length; i++) {
+				const title = feedItem[i].title;
+				if (title) {
+					console.log(`Title: ${title}`);
+				}
+			}
+		}
+	}
 }

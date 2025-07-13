@@ -14,6 +14,7 @@ export const feeds = pgTable("feeds", {
 	id: uuid("id").primaryKey().defaultRandom().notNull(),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	lastFetchedAt: timestamp("last_fetched_at"),
 	name: text("name").notNull(),
 	url: text("url").notNull().unique(),
 	userId: uuid("user_id")

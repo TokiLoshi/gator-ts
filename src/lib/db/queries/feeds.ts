@@ -1,7 +1,7 @@
 import { UUID } from "crypto";
 import { db } from "..";
 import { feeds, feed_follows, users } from "../schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 export async function createFeed(name: string, url: string, userId: string) {
 	const [result] = await db
@@ -83,4 +83,28 @@ export async function deleteFeedFollow(feedUrl: string, userId: string) {
 		)
 		.returning();
 	return deletedFeedFollow;
+}
+
+export async function markFeedFetched(feedId: string) {
+	const currentTime = new Date();
+	const fetchedFeed = await db
+		.update(feeds)
+		.set({
+			updatedAt: currentTime,
+			lastFetchedAt: currentTime,
+		})
+		.where(eq(feeds.id, feedId));
+}
+
+export async function getNextFeedToFetch() {
+	const orderedFeeds = await db
+		.select()
+		.from(feeds)
+		.orderBy(sql`${feeds.lastFetchedAt} asc nulls first`);
+
+	if (orderedFeeds.length === 0) {
+		return;
+	}
+	const nextFeed = orderedFeeds[0];
+	return nextFeed;
 }
