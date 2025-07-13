@@ -15,6 +15,13 @@
       "when": 1752258584314,
       "tag": "0001_flashy_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752355320951,
+      "tag": "0002_nebulous_the_hunter",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,16 @@
 import { XMLParser } from "fast-xml-parser";
 import { readConfig } from "../../config";
 import { getUser, getUserById } from "../lib/db/queries/users";
-import { createFeed, getFeeds } from "../lib/db/queries/feeds";
+import {
+	createFeed,
+	getFeeds,
+	getFeedByUrl,
+	createFeedFollow,
+	getFeedFollowsForUser,
+	getFeed,
+} from "../lib/db/queries/feeds";
 import { feeds, users } from "../lib/db/schema";
+import { getCurrentUser } from "./users";
 
 type RSSFeed = {
 	channel: {
@@ -146,6 +154,10 @@ export async function addfeed(cmdName: string, ...args: string[]) {
 	const userId = user.id;
 	const addedFeed = await createFeed(feedName, url, userId);
 	printFeed(addedFeed, user);
+
+	const feedInfo = await getFeed(feedName);
+	const feedId = feedInfo[0].id;
+	const newFeedFollow = await createFeedFollow(userId, feedId);
 }
 
 export type Feed = typeof feeds.$inferSelect;
@@ -167,5 +179,30 @@ export async function allFeeds() {
 		console.log(feedName);
 		console.log(feedUrl);
 		console.log(userName);
+	}
+}
+
+export async function follow(cmndName: string, ...args: string[]) {
+	if (args.length !== 1) {
+		throw new Error(`usage ${cmndName} <feedURL>`);
+	}
+	const feedUrl = args[0];
+	// get current user
+	const currentUser = await getCurrentUser();
+	const userId = currentUser[0].id;
+	const feed = await getFeedByUrl(feedUrl);
+	const feedId = feed.id;
+	// create a new follow record for current user
+	const newFeedFollow = await createFeedFollow(userId, feedId);
+	console.log(currentUser);
+	console.log(feed.name);
+}
+
+export async function following() {
+	const currentUser = await getCurrentUser();
+	const currentUserId = currentUser[0].id;
+	const feeds = await getFeedFollowsForUser(currentUserId);
+	for (let i = 0; i < feeds.length; i++) {
+		console.log(feeds[i].name);
 	}
 }

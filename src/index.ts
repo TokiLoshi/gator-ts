@@ -9,20 +9,22 @@ import {
 import { argv } from "node:process";
 import { registerUser, getAllUsers, handlerLogin } from "./commands/users.js";
 import { resetDB } from "./commands/reset.js";
-import { agg, addfeed, allFeeds } from "./commands/feeds.js";
+import { agg, addfeed, allFeeds, follow, following } from "./commands/feeds.js";
 
 async function main() {
 	console.log("Hello, Gator!");
 	const registery: CommandsRegistry = {};
 
 	// Register Commands
-	const login = await registerCommand(registery, "login", handlerLogin);
-	const register = await registerCommand(registery, "register", registerUser);
-	const reset = await registerCommand(registery, "reset", resetDB);
-	const getUsers = await registerCommand(registery, "users", getAllUsers);
-	const aggregate = await registerCommand(registery, "agg", agg);
-	const createFeed = await registerCommand(registery, "addfeed", addfeed);
-	const getAllFeeds = await registerCommand(registery, "feeds", allFeeds);
+	await registerCommand(registery, "login", handlerLogin);
+	await registerCommand(registery, "register", registerUser);
+	await registerCommand(registery, "reset", resetDB);
+	await registerCommand(registery, "users", getAllUsers);
+	await registerCommand(registery, "agg", agg);
+	await registerCommand(registery, "addfeed", addfeed);
+	await registerCommand(registery, "feeds", allFeeds);
+	await registerCommand(registery, "follow", follow);
+	await registerCommand(registery, "following", following);
 
 	// Handle arguments
 	const commands = process.argv.slice(2);

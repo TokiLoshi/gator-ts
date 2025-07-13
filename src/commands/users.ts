@@ -56,3 +56,10 @@ export async function getAllUsers() {
 		}
 	}
 }
+
+export async function getCurrentUser() {
+	const configFile = readConfig();
+	const currentUserName = configFile["currentUserName"];
+	const currentUser = await getUser(currentUserName);
+	return currentUser;
+}
