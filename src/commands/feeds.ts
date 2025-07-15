@@ -14,6 +14,8 @@ import {
 } from "../lib/db/queries/feeds";
 import { feeds, users } from "../lib/db/schema";
 import { getCurrentUser } from "./users";
+import { createPost, getPostsForUser } from "../lib/db/queries/posts";
+import type { NewPost, User } from "../lib/db/schema";
 
 type RSSFeed = {
 	channel: {
@@ -32,7 +34,6 @@ type RSSItem = {
 };
 
 export type Feed = typeof feeds.$inferSelect;
-export type User = typeof users.$inferSelect;
 
 export async function fetchFeed(feedURL: string) {
 	// fetch feed data
@@ -135,38 +136,47 @@ export async function fetchFeed(feedURL: string) {
 	return newsFeed;
 }
 
-function parseDuration(durationStr: string): number {
+function parseDuration(durationStr: string) {
 	const regex = /^(\d+)(ms|s|m|h)$/;
 	const match = durationStr.match(regex);
-	if (match) {
-		const duration = parseInt(match[1]);
-		const multiplier = match[2];
+	if (!match) return;
+	if (match.length !== 3) return;
 
-		switch (multiplier) {
-			case "ms":
-				return duration;
-			case "s":
-				return duration * 1000;
-			case "m":
-				return duration * 1000 * 60;
-			case "h":
-				return duration * 1000 * 60 * 60;
-			default:
-				return 16000;
-		}
+	const duration = parseInt(match[1], 10);
+	const multiplier = match[2];
+
+	switch (multiplier) {
+		case "ms":
+			return duration;
+		case "s":
+			return duration * 1000;
+		case "m":
+			return duration * 1000 * 60;
+		case "h":
+			return duration * 1000 * 60 * 60;
+		default:
+			return;
 	}
-	return 16000;
 }
 
-export async function agg(time_between_reqs: string) {
-	const duration = parseDuration(time_between_reqs);
-	console.log(`Collecting feeds every ${time_between_reqs}`);
+export async function agg(cmndName: string, ...args: string[]) {
+	if (args.length !== 1) {
+		throw new Error(`usage: ${cmndName} <time_between_reqs>`);
+	}
+	const timeArg = args[0];
+	const timeBetweenRequests = parseDuration(timeArg);
+	if (!timeBetweenRequests) {
+		throw new Error(
+			`invalid duration: ${timeArg} - format 2h 20min 2s or 1600ms`
+		);
+	}
+	console.log(`Collecting feeds every ${timeBetweenRequests}`);
 
 	scrapeFeeds().catch((error) => console.log(`Error: ${error}`));
 
 	const interval = setInterval(() => {
 		scrapeFeeds().catch((error) => console.log(`Error: ${error}`));
-	}, duration);
+	}, timeBetweenRequests);
 
 	await new Promise<void>((resolve) => {
 		process.on("SIGNINT", () => {
@@ -259,27 +269,61 @@ export async function unfollow(
 	console.log("Unfollowed: ", unfollowed);
 }
 
-export async function scrapeFeeds() {
-	// get the next feed to fetch from the db
-	const nextFeed = await getNextFeedToFetch();
+async function scrapeFeeds() {
+	const feed = await getNextFeedToFetch();
+	if (!feed) {
+		console.log(`No more feeds`);
+		return;
+	}
+	console.log(`Found feed to fetch!`);
+	scrapeFeed(feed);
+}
 
-	if (nextFeed) {
-		// mark it as fetched
-		const feedId = nextFeed?.id;
-		const markedFetch = await markFeedFetched(feedId);
-		// fetch the feed using the url
-		const feedURL = nextFeed.url;
-		const feed = await fetchFeed(feedURL);
-		if (!feed) {
-			console.log("No feed to fetch");
-		} else if (feed) {
-			const feedItem = feed.channel.item;
-			for (let i = 0; i < feedItem.length; i++) {
-				const title = feedItem[i].title;
-				if (title) {
-					console.log(`Title: ${title}`);
-				}
-			}
+export async function scrapeFeed(feed: Feed) {
+	await markFeedFetched(feed.id);
+	const feedData = await fetchFeed(feed.url);
+
+	if (!feedData) {
+		throw new Error("something went wrong fetching feed data");
+	}
+
+	for (let item of feedData.channel.item) {
+		console.log(`Found post: ${item.title}`);
+		const now = new Date();
+		await createPost({
+			url: item.link,
+			feedId: feed.id,
+			title: item.title,
+			createdAt: now,
+			updatedAt: now,
+			description: item.description,
+			publishedAt: new Date(item.pubDate),
+		} satisfies NewPost);
+	}
+	console.log(
+		`Feed ${feed.name} collected, ${feedData.channel.item.length} posts found`
+	);
+}
+
+export async function browse(cmdName: string, user: User, ...args: string[]) {
+	console.log("User: ", user);
+	let limit = 2;
+	if (args.length === 1) {
+		let postLimit = parseInt(args[0]);
+		if (postLimit) {
+			limit = postLimit;
+		} else {
+			throw new Error(`usage: ${cmdName} [limit]`);
 		}
+	}
+	const posts = await getPostsForUser(user.id, limit);
+	console.log(`Found: ${posts.length} posts for user ${user.name}`);
+
+	for (let post of posts) {
+		console.log(`${post.publishedAt} from ${post.feedName}`);
+		console.log(`---${post.title}---`);
+		console.log(` ${post.description}   `);
+		console.log(`Link: ${post.url}`);
+		console.log(`=======>>>`);
 	}
 }

@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 import { db } from "..";
-import { feeds, feed_follows, users } from "../schema";
+import { feeds, feedFollows, users } from "../schema";
 import { and, eq, sql } from "drizzle-orm";
 
 export async function createFeed(name: string, url: string, userId: string) {
@@ -28,7 +28,7 @@ export async function getFeeds() {
 export async function createFeedFollow(user_id: string, feed_id: string) {
 	// insert a feedfollow record
 	const [newFeedFollow] = await db
-		.insert(feed_follows)
+		.insert(feedFollows)
 		.values({
 			userId: user_id,
 			feedId: feed_id,
@@ -37,18 +37,18 @@ export async function createFeedFollow(user_id: string, feed_id: string) {
 
 	const [joinedFollows] = await db
 		.select({
-			id: feed_follows.id,
-			createdAt: feed_follows.createdAt,
-			updatedAt: feed_follows.updatedAt,
-			userId: feed_follows.userId,
-			feedId: feed_follows.feedId,
+			id: feedFollows.id,
+			createdAt: feedFollows.createdAt,
+			updatedAt: feedFollows.updatedAt,
+			userId: feedFollows.userId,
+			feedId: feedFollows.feedId,
 			userName: users.name,
 			feedName: feeds.name,
 		})
-		.from(feed_follows)
-		.innerJoin(users, eq(feed_follows.userId, users.id))
-		.innerJoin(feeds, eq(feed_follows.feedId, feeds.id))
-		.where(eq(feed_follows.id, newFeedFollow.id));
+		.from(feedFollows)
+		.innerJoin(users, eq(feedFollows.userId, users.id))
+		.innerJoin(feeds, eq(feedFollows.feedId, feeds.id))
+		.where(eq(feedFollows.id, newFeedFollow.id));
 
 	return joinedFollows;
 }
@@ -63,9 +63,9 @@ export async function getFeedFollowsForUser(id: string) {
 		.select({
 			name: feeds.name,
 		})
-		.from(feed_follows)
-		.innerJoin(feeds, eq(feed_follows.feedId, feeds.id))
-		.where(eq(feed_follows.userId, id));
+		.from(feedFollows)
+		.innerJoin(feeds, eq(feedFollows.feedId, feeds.id))
+		.where(eq(feedFollows.userId, id));
 	return userFeeds;
 }
 
@@ -77,10 +77,8 @@ export async function deleteFeedFollow(feedUrl: string, userId: string) {
 	const feedId = feed.id;
 
 	const deletedFeedFollow = await db
-		.delete(feed_follows)
-		.where(
-			and(eq(feed_follows.feedId, feedId), eq(feed_follows.userId, userId))
-		)
+		.delete(feedFollows)
+		.where(and(eq(feedFollows.feedId, feedId), eq(feedFollows.userId, userId)))
 		.returning();
 	return deletedFeedFollow;
 }

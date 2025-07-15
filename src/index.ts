@@ -16,6 +16,7 @@ import {
 	follow,
 	following,
 	unfollow,
+	browse,
 } from "./commands/feeds.js";
 import { middlewareLoggedIn } from "./middleware.js";
 
@@ -34,6 +35,7 @@ async function main() {
 	await registerCommand(registery, "follow", middlewareLoggedIn(follow));
 	await registerCommand(registery, "following", middlewareLoggedIn(following));
 	await registerCommand(registery, "unfollow", middlewareLoggedIn(unfollow));
+	await registerCommand(registery, "browse", middlewareLoggedIn(browse));
 
 	// Handle arguments
 	const commands = process.argv.slice(2);
